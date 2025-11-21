@@ -15,6 +15,7 @@
         "dev:list": "cd services/list-service && npm run dev",
         "dev:gateway": "cd api-gateway && npm run dev",
         "demo": "node client-demo.js",
+        "start:consumers": "concurrently \"node services/messaging/consumer_notification.js\" \"node services/messaging/consumer_analytics.js\"",
         "health": "curl -s http://localhost:3000/health",
         "install:all": "npm install && cd services/user-service && npm install && cd ../list-service && npm install && cd ../item-service && npm install && cd ../../api-gateway && npm install",
         "clean": "rm -rf node_modules services/*/node_modules api-gateway/node_modules",
@@ -43,6 +44,10 @@
         "axios": "^1.12.2",
         "fs-extra": "^11.1.0",
         "uuid": "^9.0.0"
+        ,
+        "amqplib": "^0.10.3"
+        ,
+        "dotenv": "^16.3.1"
     },
     "devDependencies": {
         "concurrently": "^7.6.0"

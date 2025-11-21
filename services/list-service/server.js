@@ -1,8 +1,17 @@
+const path = require('path');
+// Load .env from project root (works even when service is started from its subfolder)
+try {
+    const dotenvPath = path.resolve(__dirname, '..', '..', '.env');
+    require('dotenv').config({ path: dotenvPath });
+} catch (e) {
+    // fallback to default behavior
+    try { require('dotenv').config(); } catch (e) { }
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path');
 const JsonDatabase = require('../../shared/JsonDatabase');
 const serviceRegistry = require('../../shared/serviceRegistry');
 

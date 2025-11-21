@@ -4,6 +4,7 @@ const JsonDatabase = require('../../../shared/JsonDatabase');
 const path = require('path');
 const { authenticateToken, authorizeListAccess } = require('../middleware/auth');
 const ItemServiceClient = require('../utils/itemServiceClient');
+const amqplib = require('amqplib');
 
 const router = express.Router();
 const dbPath = path.join(__dirname, '../database');
@@ -219,6 +220,46 @@ router.get('/:id/summary', authorizeListAccess, async (req, res, next) => {
     } catch (error) {
         console.error('Erro ao gerar resumo:', error);
         next(error);
+    }
+});
+
+// POST /lists/:id/checkout - Finalizar compra (producer)
+router.post('/:id/checkout', authorizeListAccess, async (req, res, next) => {
+    try {
+        const list = req.list;
+
+        // Construir mensagem a ser publicada
+        const message = {
+            event: 'list.checkout.completed',
+            listId: list.id,
+            userId: list.userId,
+            items: list.items,
+            summary: list.summary,
+            timestamp: new Date().toISOString()
+        };
+
+        // Publicar no RabbitMQ (exchange: shopping_events, routingKey: list.checkout.completed)
+        const RABBIT_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
+        const conn = await amqplib.connect(RABBIT_URL);
+        const channel = await conn.createChannel();
+        const exchange = 'shopping_events';
+        await channel.assertExchange(exchange, 'topic', { durable: true });
+
+        const routingKey = 'list.checkout.completed';
+        channel.publish(exchange, routingKey, Buffer.from(JSON.stringify(message)), { persistent: true });
+
+        // fechar canal/conn após pequeno delay para garantir envio
+        setTimeout(() => {
+            try { channel.close(); } catch (e) { }
+            try { conn.close(); } catch (e) { }
+        }, 500);
+
+        // Retornar 202 Accepted imediatamente
+        res.status(202).json({ message: 'Checkout accepted and published' });
+    } catch (error) {
+        console.error('Erro ao processar checkout:', error && error.stack ? error.stack : error);
+        // Return a clearer error to the client for debugging (message + status)
+        return res.status(500).json({ error: { message: error && error.message ? error.message : String(error), status: 500 } });
     }
 });
 
