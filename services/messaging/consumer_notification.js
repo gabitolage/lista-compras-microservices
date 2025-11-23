@@ -27,10 +27,8 @@ const amqplib = require('amqplib');
                 try {
                     const content = JSON.parse(msg.content.toString());
                     const listId = content.listId || '(unknown)';
-                    const userId = content.userId || '(unknown)';
-                    const email = content.userEmail || `${userId}@example.com`;
-
-                    console.log(`Enviando comprovante da lista ${listId} para o usuário ${email}`);
+                    // Não imprimir email fabricado; logar apenas que a notificação foi processada
+                    console.log(`Notification processed for list ${listId}`);
 
                     channel.ack(msg);
                 } catch (err) {

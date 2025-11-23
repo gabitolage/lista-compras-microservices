@@ -27,7 +27,7 @@ npm install
 cd ..\..
 ```
 
-2. Iniciar os consumers (terminal A):
+1. Iniciar os consumers:
 
 ```powershell
 npm run start:consumers
@@ -76,7 +76,7 @@ Write-Host "Usando item: $firstItemId"
 6.Adicionar item à lista:
 
 ```powershell
-$addBody = @{ itemId = $firstItemId; quantity = 2 } | ConvertTo-Json
+$addBody = @{ itemId = $firstItemId; quantity = 1 } | ConvertTo-Json
 $updatedList = Invoke-RestMethod -Uri "http://localhost:3002/lists/$listId/items" -Method Post -Headers $headers -Body $addBody
 Write-Host "Item adicionado. Total itens na lista: $($updatedList.items.Count)"
 ```

@@ -106,7 +106,23 @@ router.delete('/:id', authorizeListAccess, async (req, res, next) => {
 // POST /lists/:id/items - Adicionar item à lista
 router.post('/:id/items', authorizeListAccess, async (req, res, next) => {
     try {
-        const { itemId, quantity, notes } = req.body;
+        // tolerância: aceitar req.body como string (ex.: PowerShell hashtable string)
+        let body = req.body;
+        if (typeof body === 'string') {
+            // tentar parse simples: procurar itemId=xxx e quantity=yyy
+            const raw = body;
+            console.warn('Request body recebido como string; tentando extrair campos:', raw);
+            const mItem = raw.match(/itemId\s*=\s*([^;\s}]+)/i);
+            const mQty = raw.match(/quantity\s*=\s*([^;\s}]+)/i);
+            const mNotes = raw.match(/notes\s*=\s*([^;\s}]*)/i);
+            body = {
+                itemId: mItem ? mItem[1].toString().trim() : undefined,
+                quantity: mQty ? parseFloat(mQty[1]) : undefined,
+                notes: mNotes ? mNotes[1].toString().trim() : undefined
+            };
+        }
+        const { itemId: rawItemId, quantity, notes } = body;
+        const itemId = rawItemId ? String(rawItemId) : rawItemId;
         
         if (!itemId || !quantity) {
             return res.status(400).json({ error: 'itemId e quantity são obrigatórios' });
@@ -116,8 +132,9 @@ router.post('/:id/items', authorizeListAccess, async (req, res, next) => {
         let itemInfo;
         try {
             itemInfo = await ItemServiceClient.getItem(itemId);
+            console.log('Item fetch result for', itemId, itemInfo);
         } catch (error) {
-            console.warn('Não foi possível buscar informações do item:', error.message);
+            console.warn('Não foi possível buscar informações do item:', error && error.message ? error.message : error);
             itemInfo = { name: 'Item Desconhecido', unit: 'un', averagePrice: 0 };
         }
 
@@ -227,6 +244,21 @@ router.get('/:id/summary', authorizeListAccess, async (req, res, next) => {
 router.post('/:id/checkout', authorizeListAccess, async (req, res, next) => {
     try {
         const list = req.list;
+
+        // Garantir que o resumo/estimatedPrice estejam atualizados
+        try {
+            await updateListSummary(list);
+        } catch (e) {
+            console.warn('Não foi possível atualizar resumo antes do checkout:', e && e.message ? e.message : e);
+        }
+
+        // (DEBUG) mostrar summary e preços por item antes de publicar
+        try {
+            console.log('Checkout - resumo antes do publish:', JSON.stringify(list.summary));
+            console.log('Checkout - items (estimatedPrice):', list.items.map(i => ({ itemId: i.itemId, estimatedPrice: i.estimatedPrice, quantity: i.quantity })));
+        } catch (e) {
+            // não falhar o checkout por causa do log
+        }
 
         // Construir mensagem a ser publicada
         const message = {
