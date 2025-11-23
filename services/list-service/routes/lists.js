@@ -278,7 +278,9 @@ router.post('/:id/checkout', authorizeListAccess, async (req, res, next) => {
         await channel.assertExchange(exchange, 'topic', { durable: true });
 
         const routingKey = 'list.checkout.completed';
-        channel.publish(exchange, routingKey, Buffer.from(JSON.stringify(message)), { persistent: true });
+    const published = channel.publish(exchange, routingKey, Buffer.from(JSON.stringify(message)), { persistent: true });
+    // Log para ajudar no debug: confirma que o publish foi chamado
+    console.log('Checkout - mensagem publicada no exchange', exchange, 'routingKey=', routingKey, 'published=', published);
 
         // fechar canal/conn após pequeno delay para garantir envio
         setTimeout(() => {

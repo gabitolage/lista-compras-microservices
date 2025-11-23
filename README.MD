@@ -27,7 +27,7 @@ npm install
 cd ..\..
 ```
 
-1. Iniciar os consumers:
+2. Iniciar os consumers:
 
 ```powershell
 npm run start:consumers
@@ -86,3 +86,4 @@ Write-Host "Item adicionado. Total itens na lista: $($updatedList.items.Count)"
 ```powershell
 Invoke-RestMethod -Uri "http://localhost:3002/lists/$listId/checkout" -Method Post -Headers @{ Authorization = "Bearer $token" }
 ```
+
