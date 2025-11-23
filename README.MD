@@ -33,25 +33,56 @@ cd ..\..
 npm run start:consumers
 ```
 
-3. Iniciar o `list-service` (terminal B):
+3. Logar em alguma conta
+
+Registrar um usuário:
 
 ```powershell
-npm run start:list
+$register = @{ email = 'demo@example.com'; username = 'demo_user'; password = 'Password1!'; firstName = 'Demo'; lastName = 'User' } | ConvertTo-Json
+$regResp = Invoke-RestMethod -Uri 'http://localhost:3001/auth/register' -Method Post -ContentType 'application/json' -Body $register
+$token = $regResp.token
+$userId = $regResp.user.id
+Write-Host "User registered: $userId"
 ```
 
-4. Gerar um token JWT de teste e armazená-lo em `$token` (terminal C):
+Ou efetuar login em um usuário já existente:
 
 ```powershell
-$token = (npm --silent --prefix services/list-service run gen:token)
-Write-Host "Token: $token"
+$login = @{ username = 'demo_user'; password = 'Password1!' } | ConvertTo-Json
+$loginResp = Invoke-RestMethod -Uri 'http://localhost:3001/auth/login' -Method Post -ContentType 'application/json' -Body $login
+$token = $loginResp.token
+$userId = $loginResp.user.id
+Write-Host "Logged in as: $userId"
 ```
 
-5. Criar a lista e fazer o checkout (usando `$token` já definido):
+4.Criar uma lista (token já definido):
 
 ```powershell
 $headers = @{ Authorization = "Bearer $token"; "Content-Type" = "application/json" }
-$body = @{ name = "Lista Demo"; description = "Teste de checkout" } | ConvertTo-Json
-$response = Invoke-RestMethod -Uri 'http://localhost:3002/lists' -Method Post -Headers $headers -Body $body
-$listId = $response.id
+$body = @{ name = "Lista Demo"; description = "Lista para demo de checkout" } | ConvertTo-Json
+$createResp = Invoke-RestMethod -Uri 'http://localhost:3002/lists' -Method Post -Headers $headers -Body $body
+$listId = $createResp.id
+Write-Host "Lista criada: $listId (userId no token: $userId)"
+```
+
+5.Escolher um item para adicionar:
+
+```powershell
+$itemsResp = Invoke-RestMethod -Uri 'http://localhost:3003/items' -Method Get
+$firstItemId = $itemsResp.items[0].id
+Write-Host "Usando item: $firstItemId"
+```
+
+6.Adicionar item à lista:
+
+```powershell
+$addBody = @{ itemId = $firstItemId; quantity = 2 } | ConvertTo-Json
+$updatedList = Invoke-RestMethod -Uri "http://localhost:3002/lists/$listId/items" -Method Post -Headers $headers -Body $addBody
+Write-Host "Item adicionado. Total itens na lista: $($updatedList.items.Count)"
+```
+
+7.Fazer o checkout (publica evento assíncrono e retorna 202):
+
+```powershell
 Invoke-RestMethod -Uri "http://localhost:3002/lists/$listId/checkout" -Method Post -Headers @{ Authorization = "Bearer $token" }
 ```
